@@ -101,7 +101,7 @@ class ChatRequest(BaseModel):
 async def chat_with_agent(request: ChatRequest):
     try:
         # --- Step 1: Call the Google AI API ---
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content([CAREER_AGENT_PROMPT, request.message])
         ai_response = response.text
 
