@@ -1,4 +1,7 @@
 # main.py (Version for Google Gemini - Corrected)
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
 
 import os
 from fastapi import FastAPI
@@ -9,6 +12,30 @@ from dotenv import load_dotenv
 
 from fastapi.responses import StreamingResponse
 import asyncio
+
+# --- Google Sheets Logging Setup ---
+def log_to_sheet(user_question, ai_response):
+    try:
+        scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/spreadsheets',
+                 "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
+        
+        # Use the JSON file for credentials
+        creds = ServiceAccountCredentials.from_json_keyfile_name("google_credentials.json", scope )
+        client = gspread.authorize(creds)
+        
+        # Open the sheet by its name
+        sheet = client.open("CareerSum Chat Logs").sheet1
+        
+        # Prepare the row
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        row = [timestamp, user_question, ai_response]
+        
+        # Append the row to the sheet
+        sheet.append_row(row)
+        print("Successfully logged conversation to Google Sheet.")
+    except Exception as e:
+        print(f"Error logging to Google Sheet: {e}")
+# --- End of Logging Setup ---
 
 
 # Load environment variables from a .env file
@@ -81,6 +108,9 @@ async def chat_with_agent(request: ChatRequest):
             {'role': 'user', 'parts': [CAREER_AGENT_PROMPT]},
             {'role': 'model', 'parts': ["Understood. I am CareerSum AI, ready to assist with career questions and guide users to book a discovery call."]}
         ])
+        
+        # Call the new logging function before returning the response
+        log_to_sheet(request.message, ai_response)
 
         # Send the user's message to the chat session
         response = chat.send_message(request.message)
