@@ -100,27 +100,29 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat_with_agent(request: ChatRequest):
     try:
-        # Initialize the Gemini Pro model
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # --- Step 1: Call the Google AI API ---
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content([CAREER_AGENT_PROMPT, request.message])
+        ai_response = response.text
 
-        # Start a chat session, including the system prompt as the first message
-        chat = model.start_chat(history=[
-            {'role': 'user', 'parts': [CAREER_AGENT_PROMPT]},
-            {'role': 'model', 'parts': ["Understood. I am CareerSum AI, ready to assist with career questions and guide users to book a discovery call."]}
-        ])
-        
-        # Call the new logging function before returning the response
+        # --- Step 2: If successful, log the conversation ---
+        # This now only runs if the AI call succeeds.
         log_to_sheet(request.message, ai_response)
 
-        # Send the user's message to the chat session
-        response = chat.send_message(request.message)
-        
-        ai_message = response.text
-        return {"response": ai_message}
+        # --- Step 3: Return the successful response ---
+        return {"response": ai_response}
+
     except Exception as e:
-        # This will catch errors if the API key was not configured at startup
-        print(f"Error calling Google AI: {e}")
-        return {"response": f"Sorry, an error occurred on the server. Check server logs for details."}
+        # --- This block now handles ALL errors ---
+        error_message = f"Error calling Google AI: {e}"
+        print(error_message)
+        
+        # Log the error itself to the sheet so you know it happened
+        log_to_sheet(request.message, f"SERVER_ERROR: {error_message}")
+
+        # Return a user-friendly error message
+        return {"response": "Sorry, I'm having trouble thinking right now. Please try again in a moment."}
+
 
 @app.get("/")
 def read_root():
