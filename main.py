@@ -132,7 +132,10 @@ def read_root():
 async def stream_chat_response(message: str):
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
     # Use stream=True to get chunks
-    response_stream = await model.generate_content_async(message, stream=True) 
+    # Include the system prompt just like the synchronous endpoint
+    response_stream = await model.generate_content_async(
+        [CAREER_AGENT_PROMPT, message], stream=True
+    )
     async for chunk in response_stream:
         if chunk.text:
             yield f"data: {chunk.text}\n\n" # Format for Server-Sent Events
